@@ -1,3 +1,3 @@
 # dockreduce
 
-Distribute tasks between workers on a local Docker cluster.
+Docker-based CI for a single server.
