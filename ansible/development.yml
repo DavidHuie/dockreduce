@@ -1,0 +1,101 @@
+---
+
+- hosts: all
+
+  tasks:
+
+    - name: install ansible required packages
+      sudo: yes
+      apt: pkg={{ item }} update_cache=yes state=latest
+      with_items:
+        - python-pycurl
+        - python-psycopg2
+
+- hosts: all
+
+  tasks:
+
+    - name: install docker required packages
+      sudo: yes
+      apt: pkg=apt-transport-https update_cache=yes state=latest
+
+    - name: add docker key
+      sudo: yes
+      shell: apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 36A1D7869245C8950F966E92D8576A8BA88D21E9
+
+    - name: add docker repo
+      sudo: yes
+      shell: echo deb https://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list
+
+    - name: install packages
+      sudo: yes
+      apt: pkg={{ item }} update_cache=yes state=latest
+      with_items:
+        - build-essential
+        - curl
+        - gdb
+        - git
+        - lxc-docker
+        - sqlite3
+
+- hosts: all
+
+  vars:
+      go_version: 1.3
+
+  tasks:
+
+    - name: download
+      command: >
+        chdir=/tmp
+        creates=/tmp/go{{ go_version }}.src.tar.gz
+        wget http://golang.org/dl/go{{ go_version }}.src.tar.gz
+
+    - name: extract
+      sudo: true
+      command: >
+        chdir=/tmp
+        creates=/usr/local/go
+        tar -xf go{{ go_version }}.src.tar.gz -C /usr/local
+
+    - name: change permissions
+      sudo: true
+      file: owner=vagrant path=/usr/local/go recurse=true
+
+    - name: compile
+      shell: >
+        chdir=/usr/local/go/src
+        creates=/usr/local/go/bin/go
+        ./make.bash
+
+    - name: add binaries to shell profile
+      lineinfile: >
+        state=present
+        dest=/home/vagrant/.bashrc
+        line=PATH=$PATH:/usr/local/go/bin
+
+- hosts: all
+
+  tasks:
+
+    - name: create workspace
+      shell: >
+        creates=/home/vagrant/workspace
+        mkdir /home/vagrant/workspace
+
+    - name: symlink workspace
+      shell: >
+        creates=/home/vagrant/workspace/src
+        ln -s /dockreduce/vendor /home/vagrant/workspace/src
+
+    - name: add workspace to shell profile
+      lineinfile: >
+        state=present
+        dest=/home/vagrant/.bashrc
+        line="export GOPATH=/home/vagrant/workspace"
+
+    - name: add workspace binaries to shell profile
+      lineinfile: >
+        state=present
+        dest=/home/vagrant/.bashrc
+        line=PATH=$PATH:/home/vagrant/workspace/bin
